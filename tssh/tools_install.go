@@ -329,9 +329,12 @@ func (h *binaryHelper) downloadBinary(version, svrOS, arch string) error {
 }
 
 func (h *binaryHelper) readBinary(path, version, svrOS, arch string) error {
-	file, err := os.Open(path)
+	file, err := os.Open(fmt.Sprintf("%s_%s_%s_%s.tar.gz", path, version, svrOS, arch))
 	if err != nil {
-		return err
+		file, err = os.Open(path)
+		if err != nil {
+			return err
+		}
 	}
 	defer func() { _ = file.Close() }()
 
