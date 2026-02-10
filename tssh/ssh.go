@@ -34,6 +34,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/trzsz/tsshd/tsshd"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -43,6 +44,12 @@ const (
 	kAgentChannelType = "auth-agent@openssh.com"
 	kAgentRequestName = "auth-agent-req@openssh.com"
 )
+
+// PacketConn is an alias of tsshd.PacketConn.
+type PacketConn = tsshd.PacketConn
+
+// PacketListener is an alias of tsshd.PacketListener.
+type PacketListener = tsshd.PacketListener
 
 // SshClient implements a traditional SSH client that supports shells,
 // subprocesses, TCP port/streamlocal forwarding and tunneled dialing.
@@ -60,8 +67,11 @@ type SshClient interface {
 	// DialTimeout initiates a connection to the addr from the remote host.
 	DialTimeout(network, addr string, timeout time.Duration) (net.Conn, error)
 
-	// Listen requests the remote peer open a listening socket on addr.
+	// Listen requests the remote peer to open a listening socket on addr.
 	Listen(network, addr string) (net.Listener, error)
+
+	// ListenUDP requests the remote peer to open a UDP listening endpoint on addr.
+	ListenUDP(network, addr string) (PacketListener, error)
 
 	// HandleChannelOpen returns a channel on which NewChannel requests
 	// for the given type are sent. If the type already is being handled,
@@ -70,6 +80,9 @@ type SshClient interface {
 
 	// SendRequest sends a global request, and returns the reply.
 	SendRequest(name string, wantReply bool, payload []byte) (bool, []byte, error)
+
+	// DialUDP initiates a logical UDP connection to the addr from the remote host
+	DialUDP(network, addr string, timeout time.Duration) (PacketConn, error)
 }
 
 // SshSession represents a connection to a remote command or shell.
@@ -403,12 +416,20 @@ func (c *sshClientWrapper) Listen(network, addr string) (net.Listener, error) {
 	return c.client.Listen(network, addr)
 }
 
+func (c *sshClientWrapper) ListenUDP(network, addr string) (PacketListener, error) {
+	return nil, fmt.Errorf("ListenUDP requires UDP mode")
+}
+
 func (c *sshClientWrapper) HandleChannelOpen(channelType string) <-chan ssh.NewChannel {
 	return c.client.HandleChannelOpen(channelType)
 }
 
 func (c *sshClientWrapper) SendRequest(name string, wantReply bool, payload []byte) (bool, []byte, error) {
 	return c.client.SendRequest(name, wantReply, payload)
+}
+
+func (c *sshClientWrapper) DialUDP(network, addr string, timeout time.Duration) (PacketConn, error) {
+	return nil, fmt.Errorf("DialUDP requires UDP mode")
 }
 
 func sshNewClient(c ssh.Conn, chans <-chan ssh.NewChannel, reqs <-chan *ssh.Request) SshClient {

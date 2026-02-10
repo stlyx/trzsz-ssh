@@ -534,7 +534,7 @@ func getUdpTimeoutConfig(args *sshArgs, timeoutOption string, defaultTimeout tim
 	if timeoutConfig == "" {
 		return defaultTimeout
 	}
-	timeoutSeconds, err := strconv.ParseUint(timeoutConfig, 10, 32)
+	timeoutSeconds, err := convertSshTime(timeoutConfig)
 	if err != nil {
 		warning("%s [%s] invalid: %v", timeoutOption, timeoutConfig, err)
 		return defaultTimeout
