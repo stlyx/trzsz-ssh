@@ -32,6 +32,8 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -531,4 +533,39 @@ func convertSshTime(str string) (uint32, error) {
 	}
 
 	return total, nil
+}
+
+// getOpenSSH returns a usable OpenSSH binary path and its (major, minor) version.
+func getOpenSSH() (string, int, int, error) {
+	re := regexp.MustCompile(`OpenSSH.*?_(\d+)\.(\d+)`)
+
+	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
+
+		sshPath := filepath.Join(dir, kOpenSSH)
+
+		info, err := os.Stat(sshPath)
+		if err != nil || info.IsDir() {
+			continue
+		}
+
+		out, err := exec.Command(sshPath, "-V").CombinedOutput()
+		if err != nil {
+			continue
+		}
+
+		matches := re.FindStringSubmatch(string(out))
+		if len(matches) > 2 {
+			majorVersion, minorVersion := -1, -1
+			if v, err := strconv.ParseUint(matches[1], 10, 32); err == nil {
+				majorVersion = int(v)
+			}
+			if v, err := strconv.ParseUint(matches[2], 10, 32); err == nil {
+				minorVersion = int(v)
+			}
+
+			return sshPath, majorVersion, minorVersion, nil
+		}
+	}
+
+	return "", 0, 0, fmt.Errorf("no usable ssh found in PATH")
 }

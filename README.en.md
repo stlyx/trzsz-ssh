@@ -182,7 +182,7 @@ trzsz-ssh ( tssh ) with [tsshd](https://github.com/trzsz/tsshd) also supports in
 
 - Before use, you need to configure `~/.ssh/config` (for Windows, it is `C:\Users\xxx\.ssh\config`, replace `xxx` with your username).
 
-- For how to configure `~/.ssh/config`, please refer to the documentation of [openssh](https://manpages.debian.org/bookworm/openssh-client/ssh_config.5.en.html) ( `Match` section is not supported yet ).
+- For how to configure `~/.ssh/config`, please refer to the documentation of [openssh](https://manpages.debian.org/bookworm/openssh-client/ssh_config.5.en.html). `Match` is supported only when `UseOpenSSHConfig` is enabled (see configuration below).
 
 - Running `tssh` without arguments will open the login prompt. If there are arguments except destination will also open the login prompt.
 
@@ -713,6 +713,9 @@ trzsz-ssh ( tssh ) with [tsshd](https://github.com/trzsz/tsshd) also supports in
 
   # Auto set terminal title after login. It will not be reset after exiting. Please set PROMPT_COMMAND in local shell.
   SetTerminalTitle = Yes
+
+  # Use `ssh -G` to evaluate OpenSSH config, including `Match` blocks.
+  UseOpenSSHConfig = Yes
   ```
 
 ### Comments of Config
@@ -857,14 +860,14 @@ trzsz-ssh ( tssh ) with [tsshd](https://github.com/trzsz/tsshd) also supports in
 
   ```
   Host xxx
-      #!! UdpMode Yes/QUIC/KCP
+      #!! UdpMode  ( Yes | QUIC | KCP )
   ```
 
-- The `tssh` plays the role of `ssh` on the client side, and the `tsshd` plays the role of `sshd` on the server side.
+- The `tssh` plays the role of `ssh` on the client side, while the `tsshd` acts as `sshd` on the server side.
 
-- The `tssh` will first login to the server normally as an ssh client, and then run a new `tsshd` process on the server.
+- The `tssh` first logs in to the server normally as an ssh client, and then starts a new `tsshd` process on the server, where each session has its own `tsshd` process.
 
-- The `tsshd` process listens on a random udp port between 61001 and 61999 (can be customized by `TsshdPort`), and sends its port number and some secret keys back to the `tssh` process over the ssh channel. The ssh connection is then shut down, and the `tssh` process communicates with the `tsshd` process over udp.
+- The `tsshd` process listens on a random UDP port in the range 61001–61999 (configurable via `TsshdPort`), and sends the port number and session secret keys back to the `tssh` process through the SSH channel. The SSH connection is then closed, and `tssh` communicates with `tsshd` over UDP.
 
 ### UDP Configurations
 
@@ -879,6 +882,7 @@ Host xxx
     #!! ShowNotificationOnTop yes
     #!! ShowFullNotifications yes
     #!! UdpProxyMode UDP
+    #!! UdpMTU 1400
 ```
 
 - `UdpMode`: `No` (the default: tssh works in TCP mode), `Yes` (default protocol: `QUIC`), `QUIC` ([QUIC](https://github.com/quic-go/quic-go) protocol: faster speed), `KCP` ([KCP](https://github.com/xtaci/kcp-go) protocol: lower latency).
@@ -898,6 +902,8 @@ Host xxx
 - `ShowFullNotifications`: Whether to display the full notifications or a brief notification. The default is yes, which may output several lines to the screen. Set it to `No` will output only one line.
 
 - `UdpProxyMode`: The default transport protocol is `UDP`. If `UDP` traffic is blocked by firewalls in your network environment, you can set it to `TCP` to work around the restriction, though this may introduce additional latency.
+
+- `UdpMTU`: Sets the maximum transmission unit (MTU) for UDP packets. Default is 1400.
 
 ## UDP Port Forwarding
 
@@ -930,6 +936,8 @@ When running in UDP mode, UDP port forwarding is supported.
   UdpRemoteForward /remote_socket host:hostport
   UdpRemoteForward /remote_socket /local_socket
   ```
+
+- `ForwardUdpTimeout`: Sets the idle timeout for UDP forwarding sessions; the corresponding forwarding session will be cleared automatically if no data is sent or received within this period to free resources. Default is 5 minutes.
 
 ### Trouble shooting
 
